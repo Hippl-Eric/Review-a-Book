@@ -6,7 +6,7 @@ from flask_session import Session
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 from dotenv import load_dotenv
-from helpers import login_required
+from helpers import login_required, apology
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
@@ -48,17 +48,29 @@ def index():
 def login():
     if request.method == 'POST':
 
-        # Parse form input from user
-        username = request.form.get('username')
+        # Log form values
+        user_name = request.form.get('username')
         password = request.form.get('password')
 
+        # Ensure username provided
+        if not user_name:
+            return apology("Please provide username.")
+
+        # Ensure password provided
+        if not password:
+            return apology("Please provide password.")
+
         # Check if username and password in db
+        valid_user = db.execute("SELECT * FROM users WHERE username=:username AND password=:password", {"username":user_name, "password":password}).first()
 
-            # If true store user_id in session
-            # redirect to index
-            # If false return error message
+        # Store user_id in session, redirect to index
+        if valid_user:
+            session["user_id"] = valid_user[0]
+            return redirect(url_for("index"))
 
-        return f"username = {username}, password = {password}"
+        # Return error message
+        else:
+            return apology("Incorrect username or password")
 
     else:
         return render_template("login.html")
@@ -67,20 +79,32 @@ def login():
 def register():
     if request.method == 'POST':
 
+        # Remove active user if any
         session.pop('user_id', None)
 
-        # Parse form input from user
+        # Log form values
         user_name = request.form.get('username')
         password = request.form.get('password')
         confirmation = request.form.get('confirmation')
 
+        # Ensure username provided
+        if not user_name:
+            return apology("Please provide username.")
+
+        # Ensure password provided
+        if not password:
+            return apology("Please provide password.")
+
+        # Ensure passwords match
+        if password != confirmation:
+            return apology("Passwords must match.")
+
         # Check database if username is already taken
-        # 1:34 in lecture 3
         user_check = db.execute("SELECT * FROM users WHERE username=:username", {"username":user_name}).fetchall()
 
-        # Return error message
+        # Return error message if user_check returns a value
         if user_check:
-            return "username already taken"
+            return apology("Username already taken.  Please try another")
         
         # Add user to db, store user_id in session, redirect to index page
         else:
@@ -90,7 +114,6 @@ def register():
             all_users = db.execute("SELECT * FROM users").fetchall()
             session["user_id"] = user_id[0]
             return redirect(url_for("index"))
-
 
     return render_template("register.html")
 
