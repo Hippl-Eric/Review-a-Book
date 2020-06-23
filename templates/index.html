@@ -7,4 +7,13 @@
 {% block main %}
     <p>You've reached the index page!</p>
     <p>You are logged in as id = {{ userID }}.</p>
+    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+    <h3>Search for a Book!</h3>
+    <h4>Enter 1 or more field.</h4>
+    <form action="{{ url_for('search') }}" method="POST">
+        <input type="text" name="isbn" placeholder="ISBN">
+        <input type="text" name="title" placeholder="Title">
+        <input type="text" name="author" placeholder="Author">
+        <input type="submit" value="Search">
+    </form>
 {% endblock %}

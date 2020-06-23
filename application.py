@@ -122,3 +122,14 @@ def logout():
     # remove the username from the session if it's there
     session.pop('user_id', None)
     return redirect(url_for('index'))
+
+@app.route('/search', methods = ["POST"])
+@login_required
+def search():
+
+    # Retreive form values
+    isbn = request.form.get("isbn")
+    title = request.form.get("title")
+    author = request.form.get("author")
+
+    return render_template("temp.html", page_name="search")
