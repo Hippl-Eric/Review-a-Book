@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+
+{% block title %}
+ - Results
+{% endblock %}
+
+{% block main %}
+    <h4><a href="{{ url_for('index') }}">Return to Search</a></h4>
+    <h3>Book Results</h3>
+    {% if length == 0 %}
+        <strong>Sorry, no results.  Please try again.</strong>
+    {% else %}
+        <table>
+            <tr>
+                <th>ISBN</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Year</th>
+            </tr>
+            {% for book in results %}
+                <tr>
+                    {% for col in book %}
+                        <td>{{ col }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+{% endblock %}

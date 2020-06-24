@@ -132,4 +132,23 @@ def search():
     title = request.form.get("title")
     author = request.form.get("author")
 
-    return render_template("temp.html", page_name="search")
+    # Initialize result lists
+    isbn_results = []
+    title_results = []
+    author_results = []
+
+    # Query books db for partial strings if value provided by user
+    if isbn != "":
+        isbn_results = db.execute("SELECT * FROM books WHERE isbn LIKE :isbn LIMIT 10", {"isbn": f'%{isbn}%'}).fetchall()
+    if title != "":
+        title_results = db.execute("SELECT * FROM books WHERE title LIKE :title LIMIT 10", {"title": f'%{title}%'}).fetchall()
+    if author != "":
+        author_results = db.execute("SELECT * FROM books WHERE author LIKE :author LIMIT 10", {"author": f'%{author}%'}).fetchall()
+
+    # Combine results and check total number of results
+    results = isbn_results + title_results + author_results
+    length = len(results)
+   
+    # TODO add string formatting to highlight partial strings in results
+
+    return render_template("search-results.html", results=results, length=length)
