@@ -119,6 +119,7 @@ def register():
 
 @app.route('/logout')
 def logout():
+
     # remove the username from the session if it's there
     session.pop('user_id', None)
     return redirect(url_for('index'))
@@ -152,3 +153,8 @@ def search():
     # TODO add string formatting to highlight partial strings in results
 
     return render_template("search-results.html", results=results, length=length)
+
+@app.route("/book_info/<isbn>")
+@login_required
+def book_info(isbn):
+    return render_template("temp.html", page_name=isbn)
