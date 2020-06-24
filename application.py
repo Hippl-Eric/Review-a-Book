@@ -6,14 +6,14 @@ from flask_session import Session
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 from dotenv import load_dotenv
-from helpers import login_required, apology
+from helpers import login_required, apology, good_reads_lookup
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
 
 #import enviroment varibles from .env file
 load_dotenv()
-API_KEY = os.environ["API_KEY"] #Raises a keyerror
+# API_KEY = os.environ["API_KEY"] #Raises a keyerror
 DATABASE_URL = os.getenv("DATABASE_URL") #Does not raise an error, just returns None
 # TODO looping through all env varibles and returning error messages
 
@@ -133,6 +133,8 @@ def search():
     title = request.form.get("title")
     author = request.form.get("author")
 
+    # TODO return apology when all 3 are empty string
+
     # Initialize result lists
     isbn_results = []
     title_results = []
@@ -157,4 +159,15 @@ def search():
 @app.route("/book_info/<isbn>")
 @login_required
 def book_info(isbn):
-    return render_template("temp.html", page_name=isbn)
+
+    # Query books database for book details
+    book_info = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
+
+    # Grab reviews (if any) from GoodReads
+    good_info = good_reads_lookup(isbn)
+    
+    # Query review database for reviews if any
+    reviews = db.execute("SELECT (reviewer_username, review) FROM reviews WHERE book_isbn = :isbn", {"isbn": isbn}).fetchall()
+
+    # return book info, GoodReads, and review data (3)
+    return render_template("book-info.html", book_info=book_info, good_info=good_info, reviews=reviews)
