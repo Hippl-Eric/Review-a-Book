@@ -13,9 +13,24 @@
         <h4>Goodreads Rating</h4>
         <p>Average Rating: {{ good_info['avg_rating'] }}  {{ good_info['num_ratings'] }} (Total Ratings)</p>
     {% endif %}
+    <h4>Submit a Review:</h4>
+    <form action="{{ url_for('book_info', isbn=book_info[0]) }}" method="POST">
+        Rating:
+        <input name="rating" type="number" min="1" max="5"><br>
+        <textarea name="review" rows="5" cols="40"></textarea><br>
+        <input type="submit" value="submit">
+    </form>
     <h4>User Reviews</h4>
     {% if reviews %}
-        {{ reviews }}
+        <table>
+            {% for review in reviews %}
+                <tr>
+                    {% for col in review[1:] %}
+                        <td>{{ col }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </table>
     {% else %}
         <p><strong>No user reviews.</strong></p>
     {% endif %}

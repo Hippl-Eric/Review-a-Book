@@ -156,18 +156,45 @@ def search():
 
     return render_template("search-results.html", results=results, length=length)
 
-@app.route("/book_info/<isbn>")
+@app.route("/book_info/<isbn>", methods = ["GET", "POST"])
 @login_required
 def book_info(isbn):
 
-    # Query books database for book details
-    book_info = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
+    # User is posting a review to book
+    if request.method == "POST":
 
-    # Grab reviews (if any) from GoodReads
-    good_info = good_reads_lookup(isbn)
-    
-    # Query review database for reviews if any
-    reviews = db.execute("SELECT (reviewer_username, review) FROM reviews WHERE book_isbn = :isbn", {"isbn": isbn}).fetchall()
+        # Ensure rating and review provided
+        rating = request.form.get("rating")
+        review = request.form.get("review")
+        if not rating or not review:
+            return apology("Please provide a rating and review.")
 
-    # return book info, GoodReads, and review data (3)
-    return render_template("book-info.html", book_info=book_info, good_info=good_info, reviews=reviews)
+        # Get current user_name
+        user_query = db.execute("SELECT username FROM users WHERE id = :user_id", {"user_id": session.get("user_id")}).fetchone()
+        user_name = user_query[0]
+
+        # Ensure user has not submitted review previously
+        review_check = db.execute("SELECT * FROM reviews WHERE book_isbn = :isbn AND reviewer_username = :user_name", {"isbn": isbn, "user_name": user_name}).fetchall()
+        if review_check:
+            return apology("Sorry, you can only submit one review per book")
+        
+        # Submit review to db
+        db.execute("INSERT INTO reviews (book_isbn, reviewer_username, rating, review) VALUES (:isbn, :user_name, :rating, :review)", {"isbn": isbn, "user_name": user_name, "rating": rating, "review": review})
+        db.commit()
+
+        return redirect(url_for("book_info", isbn=isbn))
+
+    # User is accessing book page and review results
+    else:
+
+        # Query books database for book details
+        book_info = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn}).fetchone()
+
+        # Grab reviews (if any) from GoodReads
+        good_info = good_reads_lookup(isbn)
+        
+        # Query review database for reviews if any
+        reviews = db.execute("SELECT * FROM reviews WHERE book_isbn = :isbn", {"isbn": isbn}).fetchall()
+
+        # return book info, GoodReads, and review data (3)
+        return render_template("book-info.html", book_info=book_info, good_info=good_info, reviews=reviews)
