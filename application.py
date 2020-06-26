@@ -1,7 +1,8 @@
 import os
 import requests
+import json
 
-from flask import Flask, session, render_template, redirect, url_for, request
+from flask import Flask, session, render_template, redirect, url_for, request, abort
 from flask_session import Session
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -133,19 +134,19 @@ def search():
     title = request.form.get("title")
     author = request.form.get("author")
 
-    # TODO return apology when all 3 are empty string
+    # Return apology when user submits no search information
+    if not isbn and not title and not author:
+        return apology("Please provide at least one search criteria.")
 
     # Initialize result lists
-    isbn_results = []
-    title_results = []
-    author_results = []
+    isbn_results = title_results = author_results = []
 
     # Query books db for partial strings if value provided by user
-    if isbn != "":
+    if isbn:
         isbn_results = db.execute("SELECT * FROM books WHERE isbn LIKE :isbn LIMIT 10", {"isbn": f'%{isbn}%'}).fetchall()
-    if title != "":
+    if title:
         title_results = db.execute("SELECT * FROM books WHERE title LIKE :title LIMIT 10", {"title": f'%{title}%'}).fetchall()
-    if author != "":
+    if author:
         author_results = db.execute("SELECT * FROM books WHERE author LIKE :author LIMIT 10", {"author": f'%{author}%'}).fetchall()
 
     # Combine results and check total number of results
@@ -198,3 +199,27 @@ def book_info(isbn):
 
         # return book info, GoodReads, and review data (3)
         return render_template("book-info.html", book_info=book_info, good_info=good_info, reviews=reviews)
+
+@app.route("/api/<isbn>", methods=["GET"])
+def api(isbn):
+
+    # Query books and reviews tables and join results
+    query = db.execute("SELECT books.title, books.author, books.year, books.isbn, COUNT(reviews.review), AVG(reviews.rating) FROM books INNER JOIN reviews ON books.isbn = reviews.book_isbn WHERE books.isbn = :isbn GROUP BY books.title, books.author, books.year, books.isbn", {"isbn": isbn}).fetchall()
+
+    # Return error code if no results
+    if not query:
+        return abort(404)
+
+    # Parse data
+    else:
+        data = query[0]
+
+    # Return JSON
+    return json.dumps({
+        "title": data[0],
+        "author": data[1],
+        "year": int(data[2]),
+        "isbn": data[3],
+        "review_count": data[4],
+        "average_score": float(data[5])
+    })
