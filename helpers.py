@@ -5,13 +5,14 @@ from functools import wraps
 from flask import redirect, url_for, session, render_template
 from dotenv import load_dotenv
 
-# Load api key from env file to global vairible
+# Load api key from env file to global varible
 load_dotenv()
 try:
     API_KEY = os.environ["API_KEY"] #Raises a keyerror
 except KeyError:
     print("ERROR: API key not found")
 
+# Flask login wrapper
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -20,9 +21,11 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Custom error messages for user
 def apology(message):
     return render_template('apology.html', message=message)
 
+# Get book ratings from Goodreads API
 def good_reads_lookup(isbn):
 
     # Contact API, return NONE if no data

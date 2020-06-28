@@ -10,8 +10,9 @@
     <p>Author: {{ book_info[2] }}</p>
     <p>Year: {{ book_info[3] }}</p>
     {% if good_info %}
-        <h4>Goodreads Rating</h4>
-        <p>Average Rating: {{ good_info['avg_rating'] }}  {{ good_info['num_ratings'] }} (Total Ratings)</p>
+        <h4>Goodreads Rating:</h4>
+        <p>Average Rating: <strong>{{ good_info['avg_rating'] }}</strong> out of <strong>{{ good_info['num_ratings'] }}</strong> Total Ratings</p>
+        <p>Data provided for free by the <a href="https://www.goodreads.com/api" target="_blank">Goodreads</a> API</p>
     {% endif %}
     <h4>Submit a Review:</h4>
     <form action="{{ url_for('book_info', isbn=book_info[0]) }}" method="POST">
@@ -24,6 +25,11 @@
     {% if reviews %}
         <table>
             {% for review in reviews %}
+                <tr>
+                    <th>Username</th>
+                    <th>Rating</th>
+                    <th>Review</th>
+                </tr>
                 <tr>
                     {% for col in review[1:] %}
                         <td>{{ col }}</td>

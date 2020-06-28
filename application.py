@@ -7,6 +7,8 @@ from flask_session import Session
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 from dotenv import load_dotenv
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from helpers import login_required, apology, good_reads_lookup
 
 app = Flask(__name__)
@@ -14,9 +16,7 @@ app.secret_key = os.urandom(16)
 
 #import enviroment varibles from .env file
 load_dotenv()
-# API_KEY = os.environ["API_KEY"] #Raises a keyerror
 DATABASE_URL = os.getenv("DATABASE_URL") #Does not raise an error, just returns None
-# TODO looping through all env varibles and returning error messages
 
 # Check for environment variable
 if DATABASE_URL is None:
@@ -31,27 +31,25 @@ Session(app)
 engine = create_engine(DATABASE_URL)
 db = scoped_session(sessionmaker(bind=engine))
 
-#test access to API
-# res = requests.get("https://www.goodreads.com/book/review_counts.json", params={"key": API_KEY, "isbns": "9781632168146"})
-# print(res.json())
-
-# test access to db
-# all_users = db.execute("SELECT * FROM users WHERE id = 2").first()
-# print(all_users)
-
 @app.route("/")
 @login_required
 def index():
-    userID = session.get("user_id")
-    return render_template("index.html", userID=userID)
+    """Display search input form"""
 
-@app.route('/login', methods=['GET', 'POST'])
+    return render_template("index.html")
+
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == 'POST':
+    """Log user in"""
+
+    if request.method == "POST":
+        
+        # Remove active user if any
+        session.pop("user_id", None)
 
         # Log form values
-        user_name = request.form.get('username')
-        password = request.form.get('password')
+        user_name = request.form.get("username")
+        password = request.form.get("password")
 
         # Ensure username provided
         if not user_name:
@@ -61,12 +59,19 @@ def login():
         if not password:
             return apology("Please provide password.")
 
-        # Check if username and password in db
-        valid_user = db.execute("SELECT * FROM users WHERE username=:username AND password=:password", {"username":user_name, "password":password}).first()
+        # Check if username in db
+        check_user = db.execute("SELECT * FROM users WHERE username=:username", {"username": user_name}).fetchone()
+
+        # Is username exists and passwords match, return True
+        def valid_user():
+            if check_user and check_password_hash(check_user[2], password):
+                return True
+            else:
+                return False
 
         # Store user_id in session, redirect to index
-        if valid_user:
-            session["user_id"] = valid_user[0]
+        if valid_user():
+            session["user_id"] = check_user[0]
             return redirect(url_for("index"))
 
         # Return error message
@@ -76,17 +81,19 @@ def login():
     else:
         return render_template("login.html")
 
-@app.route("/register", methods=['GET', 'POST'])
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method == 'POST':
+    """Register new users"""
+
+    if request.method == "POST":
 
         # Remove active user if any
-        session.pop('user_id', None)
+        session.pop("user_id", None)
 
         # Log form values
-        user_name = request.form.get('username')
-        password = request.form.get('password')
-        confirmation = request.form.get('confirmation')
+        user_name = request.form.get("username")
+        password = request.form.get("password")
+        confirmation = request.form.get("confirmation")
 
         # Ensure username provided
         if not user_name:
@@ -101,7 +108,7 @@ def register():
             return apology("Passwords must match.")
 
         # Check database if username is already taken
-        user_check = db.execute("SELECT * FROM users WHERE username=:username", {"username":user_name}).fetchall()
+        user_check = db.execute("SELECT * FROM users WHERE username=:username", {"username":user_name}).fetchone()
 
         # Return error message if user_check returns a value
         if user_check:
@@ -109,25 +116,26 @@ def register():
         
         # Add user to db, store user_id in session, redirect to index page
         else:
-            db.execute("INSERT INTO users (username, password) VALUES (:username, :password)", {"username": user_name, "password": password})
+            db.execute("INSERT INTO users (username, password) VALUES (:username, :password)", {"username": user_name, "password": generate_password_hash(password)})
             db.commit()
-            user_id = db.execute("SELECT id FROM users WHERE username=:username", {"username": user_name}).fetchall()
-            all_users = db.execute("SELECT * FROM users").fetchall()
+            user_id = db.execute("SELECT id FROM users WHERE username=:username", {"username": user_name}).fetchone()
             session["user_id"] = user_id[0]
             return redirect(url_for("index"))
 
     return render_template("register.html")
 
-@app.route('/logout')
+@app.route("/logout")
 def logout():
+    """Logout current user"""
 
-    # remove the username from the session if it's there
-    session.pop('user_id', None)
-    return redirect(url_for('index'))
+    # Remove the current user from the session
+    session.pop("user_id", None)
+    return redirect(url_for("index"))
 
-@app.route('/search', methods = ["POST"])
+@app.route("/search", methods = ["POST"])
 @login_required
 def search():
+    """"Get matching results after post from index"""
 
     # Retreive form values
     isbn = request.form.get("isbn")
@@ -143,23 +151,22 @@ def search():
 
     # Query books db for partial strings if value provided by user
     if isbn:
-        isbn_results = db.execute("SELECT * FROM books WHERE isbn LIKE :isbn LIMIT 10", {"isbn": f'%{isbn}%'}).fetchall()
+        isbn_results = db.execute("SELECT * FROM books WHERE isbn LIKE :isbn LIMIT 10", {"isbn": f"%{isbn}%"}).fetchall()
     if title:
-        title_results = db.execute("SELECT * FROM books WHERE title LIKE :title LIMIT 10", {"title": f'%{title}%'}).fetchall()
+        title_results = db.execute("SELECT * FROM books WHERE title LIKE :title LIMIT 10", {"title": f"%{title}%"}).fetchall()
     if author:
-        author_results = db.execute("SELECT * FROM books WHERE author LIKE :author LIMIT 10", {"author": f'%{author}%'}).fetchall()
+        author_results = db.execute("SELECT * FROM books WHERE author LIKE :author LIMIT 10", {"author": f"%{author}%"}).fetchall()
 
     # Combine results and check total number of results
     results = isbn_results + title_results + author_results
     length = len(results)
    
-    # TODO add string formatting to highlight partial strings in results
-
     return render_template("search-results.html", results=results, length=length)
 
 @app.route("/book_info/<isbn>", methods = ["GET", "POST"])
 @login_required
 def book_info(isbn):
+    """"Accept posts from review and return book information"""
 
     # User is posting a review to book
     if request.method == "POST":
@@ -175,7 +182,7 @@ def book_info(isbn):
         user_name = user_query[0]
 
         # Ensure user has not submitted review previously
-        review_check = db.execute("SELECT * FROM reviews WHERE book_isbn = :isbn AND reviewer_username = :user_name", {"isbn": isbn, "user_name": user_name}).fetchall()
+        review_check = db.execute("SELECT * FROM reviews WHERE book_isbn = :isbn AND reviewer_username = :user_name", {"isbn": isbn, "user_name": user_name}).fetchone()
         if review_check:
             return apology("Sorry, you can only submit one review per book")
         
@@ -183,6 +190,7 @@ def book_info(isbn):
         db.execute("INSERT INTO reviews (book_isbn, reviewer_username, rating, review) VALUES (:isbn, :user_name, :rating, :review)", {"isbn": isbn, "user_name": user_name, "rating": rating, "review": review})
         db.commit()
 
+        # Reload the book_info page with new review
         return redirect(url_for("book_info", isbn=isbn))
 
     # User is accessing book page and review results
@@ -197,11 +205,12 @@ def book_info(isbn):
         # Query review database for reviews if any
         reviews = db.execute("SELECT * FROM reviews WHERE book_isbn = :isbn", {"isbn": isbn}).fetchall()
 
-        # return book info, GoodReads, and review data (3)
+        # return book info, GoodReads, and review data
         return render_template("book-info.html", book_info=book_info, good_info=good_info, reviews=reviews)
 
 @app.route("/api/<isbn>", methods=["GET"])
 def api(isbn):
+    """Provide API access to book data and reviews"""
 
     # Query books and reviews tables and join results
     query = db.execute("SELECT books.title, books.author, books.year, books.isbn, COUNT(reviews.review), AVG(reviews.rating) FROM books INNER JOIN reviews ON books.isbn = reviews.book_isbn WHERE books.isbn = :isbn GROUP BY books.title, books.author, books.year, books.isbn", {"isbn": isbn}).fetchall()
