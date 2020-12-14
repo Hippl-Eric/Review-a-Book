@@ -14,7 +14,7 @@ from helpers import login_required, apology, good_reads_lookup
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
 
-#import enviroment varibles from .env file
+# Import environment variables from .env file
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL") #Does not raise an error, just returns None
 
