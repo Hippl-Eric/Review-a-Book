@@ -2,7 +2,7 @@
 
 Web Programming with Python and JavaScript
 
-### Project Name: Book-a-Review
+### Project Name: Review-a-Book
 ### Project Summary:
 Python/Flask application which allows users to search for ratings and reviews for up to 5,000 books.  The site accesses a postgreSQL database hosted on Heroku.  The database includes 3 tables:  
 1. Users: user login information.  
